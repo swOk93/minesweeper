@@ -4,10 +4,12 @@ import kotlin.random.Random
 var openField = mutableListOf(mutableListOf<Char>())
 var closedField = mutableListOf(mutableListOf<Char>())
 var countOfMines = 0
+var mines = 0
+var miss = 0
 
 fun createFields(x: Int, y: Int) {
     openField = MutableList(x) {MutableList(y) {'.'}}
-    closedField = MutableList(x) {mutableListOf()}
+    closedField = MutableList(x) {MutableList(y) {'.'}}
     var mines = countOfMines
     while (mines != 0) {
         val (x0, y0) = List(2) {Random.nextInt(0, x); Random.nextInt(0, y)}
@@ -25,51 +27,92 @@ fun createFields(x: Int, y: Int) {
         }
     }
     println()
-    for (line in openField.indices) {
-        closedField[line].addAll(openField[line])
-        for (char in closedField[line].indices) {
-            if (closedField[line][char] == 'X') closedField[line][char] = '.'
-        }
-    }
+    // for (line in openField.indices) {
+    //     closedField[line].addAll(openField[line])
+    //     for (char in closedField[line].indices) {
+    //         if (closedField[line][char] == 'X') closedField[line][char] = '.'
+    //     }
+    // }
 }
 
-fun printField() {
+fun printField(list: MutableList<MutableList<Char>>) {
     println(" │123456789│\n" +
             "—│—————————│")
-    for (line in closedField.indices) {
+    for (line in list.indices) {
         print("$line|")
-        print(closedField[line].joinToString(""))
+        print(list[line].joinToString(""))
         println("|")
     }
     println("—│—————————│")
 }
 
+fun marks(x: Int, y: Int) {
+    if (closedField[x][y].code in 49..57) {
+        println("There is a number here!")
+        return
+    }
+    if (closedField[x][y] == '*') {
+        closedField[x][y] = '.'
+        if (openField[x][y] == 'X') mines++ else miss--
+    }
+    else if (openField[x][y] == 'X') {
+        closedField[x][y] = '*'
+        mines--
+    }
+    else {
+        closedField[x][y] = '*'
+        miss++
+    }
+    printField(closedField)
+}
+
+fun checkAround(x: Int, y: Int) {
+    for (i in x-1..x+1) { // i is rows from previous to next
+        for (j in y-1..y+1) {  // j is columns from previous to next
+            if ((i >= 0 && j >= 0) && (i < openField.size && j < openField.size)) {
+                if (openField[i][j].code in 49..57) closedField[i][j] = openField[i][j]
+                else if (openField[i][j] == '.' && closedField[i][j] != '/') {
+                    closedField[i][j] = '/'
+                    checkAround(i, j)
+                }
+            }
+        }
+    }
+}
+
+fun check(x: Int, y: Int): Boolean {
+    if (openField[x][y] == 'X') return true
+    else if (openField[x][y].code in 49..57) closedField[x][y] = openField[x][y]
+    else if (openField[x][y] == '.') checkAround(x, y)
+    printField(closedField)
+    return false
+}
+
 fun play() {
-    var mines = countOfMines
-    var miss = 0
+    mines = countOfMines
+    var gameOver = false
     while (miss != 0 || mines != 0) {
         println("Set/delete mine marks (x and y coordinates):")
-        val (y, x) = readln().split(" ").map { it.toInt() - 1 }.toList() // x is rows, y is columns
-        if (openField[x][y].code in 49..57) {
-            println("There is a number here!")
+        val (y, x, action) = readln().split(" ").map { it }.toList() // x is rows, y is columns // there are need to fix for case if player write less data, then need to
+        if (x.toInt() > 9 || y.toInt() > 9) {
+            println("Wrong coordinates!")
             continue
         }
-        if (closedField[x][y] == '*') {
-            println(1)
-            closedField[x][y] = '.'
-            if (openField[x][y] == 'X') mines++ else miss--
+        when (action) {
+            "mine" -> marks(x.toInt() - 1, y.toInt() - 1)
+            "free" -> gameOver = check(x.toInt() - 1, y.toInt() - 1)
+            else -> println("Please, write 'free' or 'mine' after coordinates")
         }
-        else if (openField[x][y] == 'X') {
-            println(2)
-            closedField[x][y] = '*'
-            mines--
+        if (gameOver) {
+            println("You stepped on a mine and failed!")
+            printField(openField)
+            return
         }
-        else {
-            println(3)
-            closedField[x][y] = '*'
-            miss++
-        }
-        printField()
+        // printField()
+//        println("You miss $miss times")
+//        println("$mines mines left")
+    }
+//    println("(mines != 0 || miss == 0) is ${(mines != 0 && miss == 0)}")
     println("Congratulations! You found all the mines!")
 }
 
@@ -77,6 +120,6 @@ fun main() {
     println("How many mines do you want on the field?")
     countOfMines = readln().toInt()
     createFields(9, 9)
-    printField()
+    printField(closedField)
     play()
 }

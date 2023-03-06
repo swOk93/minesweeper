@@ -1,60 +1,82 @@
 package minesweeper
 import kotlin.random.Random
 
-var minedField = mutableListOf(mutableListOf<Char>())
-var OpenField = mutableListOf(mutableListOf<Char>())
+var openField = mutableListOf(mutableListOf<Char>())
+var closedField = mutableListOf(mutableListOf<Char>())
+var countOfMines = 0
 
-fun createOpenField() {
-    for (i in minedField.indices) { // i is a rows
-        for (j in minedField[i].indices) { // j is a columns
-            if (minedField[i][j] == 'X') {
-                OpenField[i][j] = 'X'
-                continue
-            }
-            var countOfMines = 0
-            for (x in i-1..i+1) { // x is rows from previous to next
-                for (y in j-1..j+1) {  // y is columns from previous to next
-                    if ((x >= 0 && y >= 0) && (x < minedField.size && y < minedField.size)) {
-                        if (minedField[x][y] == 'X') {
-//                            print("mine!")
-                            countOfMines = countOfMines + 1
-                        }
+fun createFields(x: Int, y: Int) {
+    openField = MutableList(x) {MutableList(y) {'.'}}
+    closedField = MutableList(x) {mutableListOf()}
+    var mines = countOfMines
+    while (mines != 0) {
+        val (x0, y0) = List(2) {Random.nextInt(0, x); Random.nextInt(0, y)}
+        if (openField[x0][y0] != 'X') {
+            for (i in x0-1..x0+1) { // i is rows from previous to next
+                for (j in y0-1..y0+1) {  // j is columns from previous to next
+                    if ((i >= 0 && j >= 0) && (i < openField.size && j < openField.size)) {
+                        if (openField[i][j] == '.') openField[i][j] = '1'
+                        else if (openField[i][j] != 'X') openField[i][j] = (openField[i][j].digitToInt() + 1).digitToChar()
                     }
                 }
             }
-            if (countOfMines > 0) OpenField[i][j] = countOfMines.digitToChar()
-        }
-    }
-}
-
-fun createField(x: Int, y: Int, mines: Int) {
-    minedField = MutableList(x) {MutableList(y) {'.'}}
-    OpenField = MutableList(x) {MutableList(y) {'.'}}
-    var mines = mines
-    while (mines != 0) {
-        var (x0, y0) = List(2) {Random.nextInt(0, x); Random.nextInt(0, y)}
-        if (minedField[x0][y0] != 'X') {
-            minedField[x0][y0] = 'X'
+            openField[x0][y0] = 'X'
             mines--
         }
     }
-    createOpenField()
+    println()
+    for (line in openField.indices) {
+        closedField[line].addAll(openField[line])
+        for (char in closedField[line].indices) {
+            if (closedField[line][char] == 'X') closedField[line][char] = '.'
+        }
+    }
 }
 
-// fun random(n: Int): List<Int> { // tried to create a randomizer function, maybe will finish in future
-//     var res = mutableListOf<Int>() // I just don't know, how to get seconds of current time
-//     var x = 8
-//     for (i in 0..n) {
-//         x = (7 * x + 8) % 11
-//         res.add(x)
-//     }
-//     return res
-// }
-    
+fun printField() {
+    println(" │123456789│\n" +
+            "—│—————————│")
+    for (line in closedField.indices) {
+        print("$line|")
+        print(closedField[line].joinToString(""))
+        println("|")
+    }
+    println("—│—————————│")
+}
+
+fun play() {
+    var mines = countOfMines
+    var miss = 0
+    while (miss != 0 || mines != 0) {
+        println("Set/delete mine marks (x and y coordinates):")
+        val (y, x) = readln().split(" ").map { it.toInt() - 1 }.toList() // x is rows, y is columns
+        if (openField[x][y].code in 49..57) {
+            println("There is a number here!")
+            continue
+        }
+        if (closedField[x][y] == '*') {
+            println(1)
+            closedField[x][y] = '.'
+            if (openField[x][y] == 'X') mines++ else miss--
+        }
+        else if (openField[x][y] == 'X') {
+            println(2)
+            closedField[x][y] = '*'
+            mines--
+        }
+        else {
+            println(3)
+            closedField[x][y] = '*'
+            miss++
+        }
+        printField()
+    println("Congratulations! You found all the mines!")
+}
+
 fun main() {
     println("How many mines do you want on the field?")
-    createField(9, 9, readln().toInt())
-    for (line in OpenField) {
-        println(line.joinToString(""))
-    }
+    countOfMines = readln().toInt()
+    createFields(9, 9)
+    printField()
+    play()
 }
